@@ -33,7 +33,7 @@ DOCKER_NETWORK=pizza_bot_network
 POSTGRES_VOLUME=postgres_data
 POSTGRES_CONTAINER=postgres_17
 
-BOT_IMAGE=arsenykorobeinikov/unn_pizza_bot
+BOT_IMAGE= arsenykorobeinikov/unn_pizza_bot
 BOT_CONTAINER=pizza_bot
 
 # Автоматически загружаем переменные из .env
@@ -52,7 +52,7 @@ postgres_run: docker_volume docker_net
 	  -e POSTGRES_USER="$(POSTGRES_USER)" \
 	  -e POSTGRES_PASSWORD="$(POSTGRES_PASSWORD)" \
 	  -e POSTGRES_DB="$(POSTGRES_DATABASE)" \
-	  -p "$(POSTGRES_HOST_PORT):$(POSTGRES_CONTAINER_PORT)" \
+	  -p "$(POSTGRES_PORT_HOST):$(POSTGRES_PORT_CONTAINER)" \
 	  -v $(POSTGRES_VOLUME):/var/lib/postgresql/data \
 	  --health-cmd="pg_isready -U $(POSTGRES_USER)" \
 	  --health-interval=10s \
@@ -80,11 +80,12 @@ run: docker_net
 	  --name $(BOT_CONTAINER) \
 	  --restart unless-stopped \
 	  -e POSTGRES_HOST="$(POSTGRES_CONTAINER)" \
-	  -e POSTGRES_HOST_PORT="$(POSTGRES_CONTAINER_PORT)" \
+	  -e POSTGRES_PORT="$(POSTGRES_PORT_CONTAINER)" \
 	  -e POSTGRES_USER="$(POSTGRES_USER)" \
 	  -e POSTGRES_PASSWORD="$(POSTGRES_PASSWORD)" \
 	  -e POSTGRES_DATABASE="$(POSTGRES_DATABASE)" \
 	  -e TELEGRAM_TOKEN="$(TELEGRAM_TOKEN)" \
+	  -e YOOKASSA_TOKEN="$(YOOKASSA_TOKEN)" \
 	  --network $(DOCKER_NETWORK) \
 	  $(BOT_IMAGE)
 

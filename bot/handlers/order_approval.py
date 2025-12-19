@@ -1,4 +1,6 @@
+import asyncio
 import json
+import os
 
 from dotenv import load_dotenv
 
@@ -28,7 +30,7 @@ class OrderApprovalHandler(Handler):
         callback_data = update["callback_query"]["data"]
         return callback_data in ["order_approve", "order_restart"]
 
-    def handle(
+    async def handle(
         self,
         update: dict,
         state: OrderState,
@@ -39,15 +41,15 @@ class OrderApprovalHandler(Handler):
         telegram_id = update["callback_query"]["from"]["id"]
         callback_data = update["callback_query"]["data"]
 
-        messenger.answer_callback_query(update["callback_query"]["id"])
-        messenger.delete_message(
-            chat_id=update["callback_query"]["message"]["chat"]["id"],
-            message_id=update["callback_query"]["message"]["message_id"],
-        )
-
         if callback_data == "order_approve":
-            storage.update_user_state(telegram_id, OrderState.ORDER_FINISHED)
-
+            await asyncio.gather(
+                messenger.answer_callback_query(update["callback_query"]["id"]),
+                messenger.delete_message(
+                    chat_id=update["callback_query"]["message"]["chat"]["id"],
+                    message_id=update["callback_query"]["message"]["message_id"],
+                ),
+                storage.update_user_state(telegram_id, OrderState.ORDER_FINISHED),
+            )
             pizza_name = order_json.get("pizza_name", "Unknown")
             pizza_size = order_json.get("pizza_size", "Unknown")
             drink = order_json.get("drink", "Unknown")
@@ -63,18 +65,24 @@ Thank you for your order! Your pizza will be ready soon.
 Send /start to place another order."""
 
             # Send order confirmation message
-            messenger.send_message(
+            await messenger.send_message(
                 chat_id=update["callback_query"]["message"]["chat"]["id"],
                 text=order_confirmation,
                 parse_mode="Markdown",
             )
 
         elif callback_data == "order_restart":
-            storage.clear_user_order_json(telegram_id)
+            await asyncio.gather(
+                messenger.answer_callback_query(update["callback_query"]["id"]),
+                messenger.delete_message(
+                    chat_id=update["callback_query"]["message"]["chat"]["id"],
+                    message_id=update["callback_query"]["message"]["message_id"],
+                ),
+                storage.clear_user_order_json(telegram_id),
+                storage.update_user_state(telegram_id, OrderState.WAIT_FOR_PIZZA_NAME),
+            )
 
-            storage.update_user_state(telegram_id, OrderState.WAIT_FOR_PIZZA_NAME)
-
-            messenger.send_message(
+            await messenger.send_message(
                 chat_id=update["callback_query"]["message"]["chat"]["id"],
                 text="Please choose pizza type",
                 reply_markup=json.dumps(
